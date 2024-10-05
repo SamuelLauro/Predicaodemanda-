@@ -1,12 +1,7 @@
-import pickle
-from flask import Flask, request, render_template
+from flask import Flask, render_template, request
 import numpy as np
 
 app = Flask(__name__)
-
-# Carregar o modelo salvo
-with open('modelo.pkl', 'rb') as file:
-    modelo = pickle.load(file)
 
 @app.route('/')
 def home():
@@ -14,14 +9,22 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Obter os dados do formulário enviado pelo usuário
-    int_features = [int(x) for x in request.form.values()]
-    final_features = [np.array(int_features)]
+    # Obter a data e converter para o ano
+    data = request.form['data']
+    ano = int(data.split('-')[0])  # Pega o ano da data no formato YYYY-MM-DD
     
-    # Fazer a previsão
-    prediction = modelo.predict(final_features)
+    # Obter outras características
+    num_clientes = int(request.form['num_clientes'])
+    promocao = 1 if request.form['promocao'] == 'sim' else 0  # Mapeia "sim" para 1 e "não" para 0
     
-    return render_template('index.html', prediction_text=f'Previsão de Frequência: {prediction[0]} dias')
+    # Criar uma lista de características
+    int_features = [ano, num_clientes, promocao]
+    final_features = np.array(int_features).reshape(1, -1)
+    
+    # Simular um resultado de previsão
+    prediction = np.random.randint(1, 30)  # Simula uma frequência entre 1 e 30
+    
+    return render_template('index.html', prediction_text=f'Previsão: {prediction} clientes para o dia {data}')
 
 if __name__ == "__main__":
     app.run(debug=True)

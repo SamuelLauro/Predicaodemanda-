@@ -1,31 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Previsão de Frequência de Visitas</title>
+    <title>Previsão de Demanda - Barbearia</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        label { display: block; margin-top: 10px; }
+        input[type="text"], input[type="number"], input[type="date"], select {
+            width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;
+        }
+        input[type="submit"] { margin-top: 20px; background-color: #5cb85c; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; }
+        input[type="submit"]:hover { background-color: #4cae4c; }
+        .prediction { margin-top: 20px; font-weight: bold; }
+    </style>
 </head>
 <body>
-    <h1>Previsão de Frequência de Visitas à Barbearia</h1>
-    
-    <form method="POST">
-        <label for="ano">Ano:</label><br>
-        <input type="number" id="ano" name="ano" required><br>
-
-        <label for="mes">Mês:</label><br>
-        <input type="number" id="mes" name="mes" required><br>
-
-        <label for="dia">Dia:</label><br>
-        <input type="number" id="dia" name="dia" required><br>
-
-        <label for="dia_da_semana">Dia da Semana (0=Segunda, 6=Domingo):</label><br>
-        <input type="number" id="dia_da_semana" name="dia_da_semana" required><br>
-
-        <input type="submit" value="Prever">
+    <h1>Previsão de Demanda para a Barbearia</h1>
+    <form method="post" action="/predict">
+        <label for="data">Selecione a data do agendamento:</label>
+        <input type="date" name="data" id="data" required>
+        
+        <label for="num_clientes">Número de Clientes:</label>
+        <input type="number" name="num_clientes" id="num_clientes" placeholder="Ex: 5" required min="1">
+        
+        <label for="promocao">Há promoção neste dia?</label>
+        <select name="promocao" id="promocao" required>
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+        </select>
+        
+        <input type="submit" value="Ver Previsão">
     </form>
-
-    {% if prediction is not none %}
-        <h2>Previsão: {{ prediction }} dias</h2>
+    
+    {% if prediction_text %}
+        <div class="prediction">{{ prediction_text }}</div>
     {% endif %}
 </body>
 </html>
