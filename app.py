@@ -1,30 +1,74 @@
 from flask import Flask, render_template, request
+import joblib
+import pandas as pd
 import numpy as np
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+# Carregar o modelo treinado e dados de treinamento
+model = joblib.load('modelo_regressao_linear.joblib')
+label_encoder = joblib.load('label_encoder.joblib')  # Carregar o LabelEncoder treinado
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    # Obter a data e converter para o ano
-    data = request.form['data']
-    ano = int(data.split('-')[0])  # Pega o ano da data no formato YYYY-MM-DD
-    
-    # Obter outras características
-    num_clientes = int(request.form['num_clientes'])
-    promocao = 1 if request.form['promocao'] == 'sim' else 0  # Mapeia "sim" para 1 e "não" para 0
-    
-    # Criar uma lista de características
-    int_features = [ano, num_clientes, promocao]
-    final_features = np.array(int_features).reshape(1, -1)
-    
-    # Simular um resultado de previsão
-    prediction = np.random.randint(1, 30)  # Simula uma frequência entre 1 e 30
-    
-    return render_template('index.html', prediction_text=f'Previsão: {prediction} clientes para o dia {data}')
+# Carregar o conjunto de dados de treinamento (se ainda não estiver carregado)
+# Certifique-se de que os dados de treinamento foram processados da mesma forma que os dados de entrada
+# Aqui você deve ter o dataframe original usado para treinar o modelo
+# Por exemplo: df_train = pd.read_csv('dados_treinamento.csv')
 
-if __name__ == "__main__":
+# Supondo que 'frequencia' é a coluna que contém as frequências reais de visitas
+frequencias_treinamento = np.array([10, 15, 20, 25, 30])  # Exemplo: substitua pelos dados reais
+media_frequencia = np.mean(frequencias_treinamento)
+percentil_75 = np.percentile(frequencias_treinamento, 75)
+
+# Função para prever o número de clientes com base nos inputs do usuário
+def predict_clients(idade, horario_preferido):
+    try:
+        # Codificar o valor de 'horario_preferido' com o LabelEncoder
+        horario_codificado = label_encoder.transform([horario_preferido])[0]
+    except ValueError as e:
+        print(f"Erro na codificação de '{horario_preferido}': {e}")
+        return None
+    
+    # Preparar os dados de entrada para o modelo
+    input_data = pd.DataFrame({
+        'ano': [2024],  # Ajustar conforme necessário
+        'mês': [10],
+        'dia': [17],
+        'dia_da_semana': [3],
+        'dias_entre_visitas': [30],
+        'qual seu horário preferido para agendar um atendimento?': [horario_codificado]
+    })
+
+    print(f"Dados de entrada para o modelo: \n{input_data}")  # Linha de depuração
+    
+    # Fazer a previsão
+    previsao = model.predict(input_data)[0]
+    print(f"Previsão bruta do modelo: {previsao}")  # Linha de depuração
+    
+    # Ajustar a previsão com base na média e no percentil
+    if previsao < media_frequencia * 0.5:  # Se a previsão for muito baixa
+        frequencia_prevista = round(media_frequencia)
+    elif previsao > percentil_75:  # Se a previsão for muito alta
+        frequencia_prevista = round(percentil_75)
+    else:  # Se a previsão estiver dentro do intervalo esperado
+        frequencia_prevista = round(previsao)
+    
+    print(f"Frequência prevista (ajustada): {frequencia_prevista}")  # Linha de depuração
+    return frequencia_prevista
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    frequencia_prevista = None
+    data_selecionada = None
+
+    if request.method == 'POST':
+        data_futura = request.form['data_futura']
+        idade = int(request.form['idade'])
+        horario_preferido = request.form['horario_preferido']
+
+        frequencia_prevista = predict_clients(idade, horario_preferido)
+        data_selecionada = data_futura
+
+    return render_template('index.html', frequencia=frequencia_prevista, data=data_selecionada)
+
+if __name__ == '__main__':
     app.run(debug=True)
