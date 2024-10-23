@@ -6,16 +6,13 @@ import numpy as np
 app = Flask(__name__)
 
 # Carregar o modelo treinado e dados de treinamento
-model = joblib.load('modelo_regressao_linear.joblib')
-label_encoder = joblib.load('label_encoder.joblib')  # Carregar o LabelEncoder treinado
-
-# Carregar o conjunto de dados de treinamento (se ainda não estiver carregado)
-# Certifique-se de que os dados de treinamento foram processados da mesma forma que os dados de entrada
-# Aqui você deve ter o dataframe original usado para treinar o modelo
-# Por exemplo: df_train = pd.read_csv('dados_treinamento.csv')
+model = joblib.load('modelo_svm.joblib')
+label_encoder_horario = joblib.load('label_encoder_horario.joblib')  # Carregar o LabelEncoder do horário
+label_encoder_y = joblib.load('label_encoder_y.joblib')  # Carregar o LabelEncoder da classe alvo
 
 # Supondo que 'frequencia' é a coluna que contém as frequências reais de visitas
-frequencias_treinamento = np.array([10, 15, 20, 25, 30])  # Exemplo: substitua pelos dados reais
+# Exemplo de dados de treinamento; ajuste conforme necessário
+frequencias_treinamento = np.array([10, 15, 20, 25, 30])  
 media_frequencia = np.mean(frequencias_treinamento)
 percentil_75 = np.percentile(frequencias_treinamento, 75)
 
@@ -23,19 +20,15 @@ percentil_75 = np.percentile(frequencias_treinamento, 75)
 def predict_clients(idade, horario_preferido):
     try:
         # Codificar o valor de 'horario_preferido' com o LabelEncoder
-        horario_codificado = label_encoder.transform([horario_preferido])[0]
+        horario_codificado = label_encoder_horario.transform([horario_preferido])[0]
     except ValueError as e:
         print(f"Erro na codificação de '{horario_preferido}': {e}")
         return None
     
     # Preparar os dados de entrada para o modelo
     input_data = pd.DataFrame({
-        'ano': [2024],  # Ajustar conforme necessário
-        'mês': [10],
-        'dia': [17],
-        'dia_da_semana': [3],
-        'dias_entre_visitas': [30],
-        'qual seu horário preferido para agendar um atendimento?': [horario_codificado]
+        'Idade': [idade],
+        'Qual seu horário preferido para agendar um atendimento?': [horario_codificado]
     })
 
     print(f"Dados de entrada para o modelo: \n{input_data}")  # Linha de depuração
