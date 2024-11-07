@@ -3,42 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Previsão de Visitas</title>
-    <script>
-        // Script para definir o valor mínimo e máximo do campo de data
-        document.addEventListener('DOMContentLoaded', function () {
-            const dateInput = document.getElementById('date');
-            const today = new Date();
-            const maxDate = new Date();
+    <title>Prever Frequência de Visitas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
 
-            maxDate.setDate(today.getDate() + 10);  // Define o máximo para 10 dias a partir de hoje
+        .container {
+            background-color: #ffffff;
+            padding: 20px 40px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
 
-            // Formatação das datas para o padrão YYYY-MM-DD exigido pelo input type="date"
-            const formatDate = (date) => date.toISOString().split('T')[0];
-            dateInput.min = formatDate(today);
-            dateInput.max = formatDate(maxDate);
-        });
-    </script>
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 16px;
+            color: #555;
+        }
+
+        input[type="date"],
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .result, .error {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        .result p {
+            color: #333;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
 </head>
 <body>
-    <h1>Prever Frequência de Visitas</h1>
-    <form action="/predict" method="post">
-        <label for="date">Data:</label>
-        <input type="date" id="date" name="date" required>
-        
-        <label for="period">Período do Dia:</label>
-        <select id="period" name="period" required>
-            <option value="manhã">Manhã</option>
-            <option value="tarde">Tarde</option>
-            <option value="noite">Noite</option>
-        </select>
+    <div class="container">
+        <h1>Prever Frequência de Visitas</h1>
+        <form action="/predict" method="post">
+            <label for="date">Data:</label>
+            <input type="date" id="date" name="date" required min="{{ min_date }}" max="{{ max_date }}">
+            
+            <label for="period">Período do Dia:</label>
+            <select id="period" name="period" required>
+                <option value="manhã">Manhã</option>
+                <option value="tarde">Tarde</option>
+                <option value="noite">Noite</option>
+            </select>
+            
+            <button type="submit">Prever</button>
+        </form>
 
-        <button type="submit">Prever</button>
-    </form>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
 
-    {% if period_visits is not none %}
-        <h2>Previsão de Clientes no Período {{ selected_period }}: {{ period_visits }}</h2>
-        <p>Dias até a data: {{ dias_ate_a_data }}</p>
-    {% endif %}
+        {% if predicted_visits is not none %}
+            <div class="result">
+                <h2>Previsão de Clientes no Período {{ selected_period }}:</h2>
+                <p><strong>Clientes previstos:</strong> {{ predicted_visits }}</p>
+                <p><strong>Dias até a data:</strong> {{ dias_ate_a_data }}</p>
+            </div>
+        {% endif %}
+    </div>
 </body>
 </html>
