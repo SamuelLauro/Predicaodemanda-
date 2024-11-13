@@ -1,87 +1,61 @@
-from datetime import datetime, timedelta
-from flask import Flask, render_template, request
-import joblib
+from flask import Flask, request, render_template
 import pandas as pd
-import random
+import numpy as np
+from prophet import Prophet
 
+
+# Inicializar o app Flask
 app = Flask(__name__)
 
-# Carregar o modelo, o scaler e os nomes das features
-model = joblib.load('xgboost_regressor_model.joblib')
-scaler = joblib.load('scaler.joblib')
-with open('feature_names.joblib', 'rb') as f:
-    feature_names = joblib.load(f)
+# Carregar e preparar os dados
+df = pd.read_csv("frequency_data.csv", parse_dates=['date'])
+df = df.set_index('date').resample('D').size().rename('clientes').to_frame()
+df = df[df['clientes'] > 0].reset_index().rename(columns={'date': 'ds', 'clientes': 'y'})
 
+# Configurar e treinar o modelo Prophet
+modelo = Prophet(daily_seasonality=True, yearly_seasonality=True, weekly_seasonality=True)
+modelo.fit(df)
+
+# Página inicial com o formulário
 @app.route('/')
-def index():
-    # Define a data mínima (hoje) e a data máxima (10 dias no futuro)
-    min_date = datetime.today().strftime('%Y-%m-%d')
-    max_date = (datetime.today() + timedelta(days=10)).strftime('%Y-%m-%d')
-    return render_template('index.html', min_date=min_date, max_date=max_date)
+def home():
+    return render_template('index.html')
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    # Obter a data selecionada do formulário
-    selected_date = request.form['date']
-    selected_date = datetime.strptime(selected_date, '%Y-%m-%d')
+# Endpoint para fazer a previsão
+@app.route('/prever', methods=['POST'])
+def prever():
+    try:
+        # Receber a data escolhida pelo usuário
+        data_escolhida = request.form['data']
+        data_escolhida = pd.to_datetime(data_escolhida)
 
-    # Calcular os dias até a data selecionada
-    today = datetime.today()
-    dias_ate_a_data = (selected_date - today).days
+        # Validar se a data é no futuro
+        ultima_data = df['ds'].max()
+        dias_adiante = (data_escolhida - ultima_data).days
 
-    # Verificar se a data é no passado ou maior que 10 dias no futuro
-    if dias_ate_a_data < 0 or dias_ate_a_data > 10:
-        min_date = today.strftime('%Y-%m-%d')
-        max_date = (today + timedelta(days=10)).strftime('%Y-%m-%d')
-        return render_template('index.html', error="A data selecionada deve estar entre hoje e 10 dias no futuro.", min_date=min_date, max_date=max_date)
+        if dias_adiante < 1:
+            mensagem = "Por favor, escolha uma data no futuro."
+            return render_template('index.html', mensagem=mensagem)
 
-    # Obter o período do dia (manhã, tarde, noite)
-    selected_period = request.form.get('period')
+        # Criar datas futuras e fazer a previsão com Prophet
+        futuro = modelo.make_future_dataframe(periods=dias_adiante, freq='D')
+        previsao = modelo.predict(futuro)
 
-    # Codificar o período como numérico
-    if selected_period == 'manhã':
-        horario_preferido = 0
-    elif selected_period == 'tarde':
-        horario_preferido = 1
-    else:  # 'noite'
-        horario_preferido = 2
+        # Obter o valor previsto para a data selecionada
+        previsao_data_escolhida = previsao[previsao['ds'] == data_escolhida]
+        if previsao_data_escolhida.empty:
+            mensagem = "Não foi possível fazer a previsão para essa data."
+            return render_template('index.html', mensagem=mensagem)
 
-    # Criação do DataFrame de entrada para previsão
-    input_data = pd.DataFrame([[dias_ate_a_data, horario_preferido, 10]],  # Exemplo de 10 dias desde a última visita
-                              columns=['Dia_da_Semana', 'Turno', 'Dias_Desde_Ultima_Visita'])
+        valor_previsto = max(0, int(previsao_data_escolhida['yhat'].values[0]))
 
-    # Adicionar colunas faltantes com valor zero
-    for col in feature_names:
-        if col not in input_data.columns:
-            input_data[col] = 0
+        # Retornar o valor previsto ao usuário
+        return render_template('index.html', previsao=valor_previsto, data=data_escolhida.strftime('%d/%m/%Y'))
 
-    # Reordenar as colunas para garantir a compatibilidade
-    input_data = input_data[feature_names]
+    except Exception as e:
+        mensagem = f"Ocorreu um erro: {e}"
+        return render_template('index.html', mensagem=mensagem)
 
-    # Normalizar os dados de entrada
-    scaled_data = scaler.transform(input_data)
-
-    # Prever a frequência de visitas
-    predicted_visits = model.predict(scaled_data)[0]
-
-    # Adicionar variabilidade artificial para teste
-    predicted_visits += random.uniform(-1, 1)  # Adiciona um valor aleatório entre -1 e 1 para teste
-
-    # Adicionar uma impressão para depuração
-    print("Dados de entrada (não escalados):", input_data)
-    print("Dados de entrada (escalados):", scaled_data)
-    print("Previsão original (sem aleatoriedade):", model.predict(scaled_data)[0])
-    print("Previsão com variabilidade (para teste):", predicted_visits)
-
-    return render_template(
-        'index.html', 
-        predicted_visits=int(predicted_visits), 
-        dias_ate_a_data=dias_ate_a_data, 
-        selected_period=selected_period,
-        error=None,
-        min_date=today.strftime('%Y-%m-%d'),
-        max_date=(today + timedelta(days=10)).strftime('%Y-%m-%d')
-    )
-
+# Executar o app
 if __name__ == '__main__':
     app.run(debug=True)

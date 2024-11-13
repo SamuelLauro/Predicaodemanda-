@@ -1,110 +1,63 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prever Frequência de Visitas</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f2f2f2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        .container {
-            background-color: #ffffff;
-            padding: 20px 40px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-
-        label {
-            font-size: 16px;
-            color: #555;
-        }
-
-        input[type="date"],
-        select {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
-        button {
-            width: 100%;
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        .result, .error {
-            margin-top: 20px;
-            font-size: 16px;
-        }
-
-        .result p {
-            color: #333;
-        }
-
-        .error {
-            color: red;
-        }
-    </style>
+    <title>Previsão de Visitas</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Prever Frequência de Visitas</h1>
-        <form action="/predict" method="post">
-            <label for="date">Data:</label>
-            <input type="date" id="date" name="date" required min="{{ min_date }}" max="{{ max_date }}">
-            
-            <label for="period">Período do Dia:</label>
-            <select id="period" name="period" required>
-                <option value="manhã">Manhã</option>
-                <option value="tarde">Tarde</option>
-                <option value="noite">Noite</option>
-            </select>
-            
+        <h1>Previsão de Visitas Diárias</h1>
+        <form action="/prever" method="post" onsubmit="return verificarDiaFechado()">
+            <label for="data">Escolha uma data para prever:</label>
+            <input type="date" id="data" name="data" required onchange="verificarDia()">
             <button type="submit">Prever</button>
         </form>
 
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-
-        {% if predicted_visits is not none %}
+        <!-- Exibe a previsão ou mensagem de erro do servidor -->
+        {% if previsao %}
             <div class="result">
-                <h2>Previsão de Clientes no Período {{ selected_period }}:</h2>
-                <p><strong>Clientes previstos:</strong> {{ predicted_visits }}</p>
-                <p><strong>Dias até a data:</strong> {{ dias_ate_a_data }}</p>
+                <p>Previsão para {{ data }}: <strong>{{ previsao }} clientes</strong></p>
+            </div>
+        {% elif mensagem %}
+            <div class="error">
+                <p>{{ mensagem }}</p>
             </div>
         {% endif %}
+
+        <!-- Div para exibir a mensagem de fechamento -->
+        <div class="closed-message" id="closed-message" style="display: none;">
+            Barbearia fechada neste dia.
+        </div>
     </div>
+
+    <script>
+        function verificarDia() {
+            const dataInput = document.getElementById("data").value;
+            const closedMessage = document.getElementById("closed-message");
+
+            if (dataInput) {
+                const dataSelecionada = new Date(dataInput);
+                const diaSemana = dataSelecionada.getUTCDay(); // 0 = Domingo, 1 = Segunda, etc.
+
+                // Verificar se é domingo (0) ou segunda-feira (1)
+                if (diaSemana === 0 || diaSemana === 1) {
+                    closedMessage.style.display = "block";
+                } else {
+                    closedMessage.style.display = "none";
+                }
+            }
+        }
+
+        function verificarDiaFechado() {
+            const closedMessage = document.getElementById("closed-message");
+            if (closedMessage.style.display === "block") {
+                alert("A barbearia está fechada aos domingos e segundas-feiras. Por favor, escolha outro dia.");
+                return false; // Impede o envio do formulário
+            }
+            return true;
+        }
+    </script>
 </body>
 </html>
